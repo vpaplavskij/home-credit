@@ -126,6 +126,7 @@ export default function MyHome({ property }: { property: Property | null }) {
                                     method="post"
                                     action="#"
                                     onSubmit={(e) => {
+                                        e.preventDefault();
                                         const form = new FormData(e.currentTarget);
                                         submit(Object.fromEntries(form.entries()));
                                     }}
