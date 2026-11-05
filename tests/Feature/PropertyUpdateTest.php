@@ -82,4 +82,43 @@ class PropertyUpdateTest extends TestCase
             'address' => '',
         ])->assertSessionHasErrors(['name', 'address']);
     }
+
+    public function test_index_and_update_with_empty_optional_fields(): void
+    {
+        // Mirrors the browser dialog submit: form-encoded PUT where empty
+        // optional fields arrive as null. This is the path that previously
+        // crashed with "Undefined property HasOne::$id".
+        $user = User::factory()->create();
+
+        // First visit (no property yet) must not error.
+        $this->actingAs($user)
+            ->get('/my-home')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->component('my-home'));
+
+        // Submit with optional fields left blank.
+        $this->actingAs($user)->put('/my-home', [
+            'name' => 'Bare Bones House',
+            'address' => '1 Nowhere Rd',
+            'size_sqm' => null,
+            'beds' => null,
+            'baths' => null,
+            'purchased_at' => null,
+            'owners' => null,
+        ])->assertRedirect(route('my-home'));
+
+        $property = $user->fresh()->property;
+        $this->assertNotNull($property);
+        $this->assertSame('Bare Bones House', $property->name);
+        $this->assertNull($property->size_sqm);
+        $this->assertNull($property->purchased_at);
+
+        // Re-visit must render the saved property without error.
+        $this->actingAs($user)
+            ->get('/my-home')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('my-home')
+                ->where('property.name', 'Bare Bones House'));
+    }
 }
