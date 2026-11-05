@@ -1,4 +1,5 @@
-import { Head } from '@inertiajs/react';
+import { Form, Head, router } from '@inertiajs/react';
+import { useState } from 'react';
 import {
     ArrowUpRight,
     Building2,
@@ -19,14 +20,29 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 
-const details = [
-    { icon: MapPin, label: 'Address', value: '12 Rosewood Lane, Springfield' },
-    { icon: Ruler, label: 'Size', value: '186 m² · 4 beds · 2 baths' },
-    { icon: CalendarDays, label: 'Purchased', value: 'March 2023' },
-    { icon: Users, label: 'Owners', value: 'Anna & Ben Kovač' },
-];
+type Property = {
+    id: number;
+    name: string;
+    address: string;
+    size_sqm: number | null;
+    beds: number | null;
+    baths: number | null;
+    purchased_at: string | null;
+    owners: string | null;
+};
 
 const checklist = [
     { label: 'Ownership verified', done: true },
@@ -35,7 +51,31 @@ const checklist = [
     { label: 'Utility bills (3 months)', done: false },
 ];
 
-export default function MyHome() {
+export default function MyHome({ property }: { property: Property | null }) {
+    const [open, setOpen] = useState(false);
+
+    const details = [
+        { icon: MapPin, label: 'Address', value: property?.address ?? '—' },
+        {
+            icon: Ruler,
+            label: 'Size',
+            value: property
+                ? `${property.size_sqm ?? '—'} m² · ${property.beds ?? '—'} beds · ${property.baths ?? '—'} baths`
+                : '—',
+        },
+        { icon: CalendarDays, label: 'Purchased', value: property?.purchased_at ?? '—' },
+        { icon: Users, label: 'Owners', value: property?.owners ?? '—' },
+    ];
+
+    const submit = (data: Record<string, string>) => {
+        router.put('/my-home', {
+            ...data,
+            size_sqm: data.size_sqm ? Number(data.size_sqm) : null,
+            beds: data.beds ? Number(data.beds) : null,
+            baths: data.baths ? Number(data.baths) : null,
+        });
+    };
+
     return (
         <>
             <Head title="My Home" />
@@ -52,10 +92,10 @@ export default function MyHome() {
                                     />
                                 </div>
                                 <div>
-                                    <CardTitle>Rosewood Residence</CardTitle>
+                                    <CardTitle>{property?.name ?? 'No property yet'}</CardTitle>
                                     <CardDescription className="mt-0.5 flex items-center gap-1">
                                         <MapPin className="size-3.5" />
-                                        12 Rosewood Lane, Springfield
+                                        {property?.address ?? 'Add your property details'}
                                     </CardDescription>
                                 </div>
                             </div>
@@ -68,10 +108,108 @@ export default function MyHome() {
                         </div>
                     </CardHeader>
                     <CardContent className="flex flex-wrap gap-3">
-                        <Button size="sm" variant="outline">
-                            <Building2 />
-                            Edit property
-                        </Button>
+                        <Dialog open={open} onOpenChange={setOpen}>
+                            <DialogTrigger asChild>
+                                <Button size="sm" variant="outline">
+                                    <Building2 />
+                                    Edit property
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>Edit property</DialogTitle>
+                                    <DialogDescription>
+                                        Update the details of your home.
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <Form
+                                    method="post"
+                                    action="#"
+                                    onSubmit={(e) => {
+                                        const form = new FormData(e.currentTarget);
+                                        submit(Object.fromEntries(form.entries()));
+                                    }}
+                                    className="grid gap-4"
+                                >
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="name">Property name</Label>
+                                        <Input
+                                            id="name"
+                                            name="name"
+                                            defaultValue={property?.name ?? ''}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="address">Address</Label>
+                                        <Input
+                                            id="address"
+                                            name="address"
+                                            defaultValue={property?.address ?? ''}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-4">
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="size_sqm">Size (m²)</Label>
+                                            <Input
+                                                id="size_sqm"
+                                                name="size_sqm"
+                                                type="number"
+                                                min={1}
+                                                defaultValue={property?.size_sqm ?? ''}
+                                            />
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="beds">Beds</Label>
+                                            <Input
+                                                id="beds"
+                                                name="beds"
+                                                type="number"
+                                                min={0}
+                                                defaultValue={property?.beds ?? ''}
+                                            />
+                                        </div>
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="baths">Baths</Label>
+                                            <Input
+                                                id="baths"
+                                                name="baths"
+                                                type="number"
+                                                min={0}
+                                                defaultValue={property?.baths ?? ''}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="purchased_at">Purchased</Label>
+                                        <Input
+                                            id="purchased_at"
+                                            name="purchased_at"
+                                            type="date"
+                                            defaultValue={
+                                                property?.purchased_at
+                                                    ? new Date(
+                                                        property.purchased_at,
+                                                    ).toISOString().slice(0, 10)
+                                                    : ''
+                                            }
+                                        />
+                                    </div>
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="owners">Owners</Label>
+                                        <Input
+                                            id="owners"
+                                            name="owners"
+                                            defaultValue={property?.owners ?? ''}
+                                        />
+                                    </div>
+                                    <DialogFooter className="mt-2">
+                                        <Button type="submit">Save changes</Button>
+                                    </DialogFooter>
+                                </Form>
+                            </DialogContent>
+                        </Dialog>
                         <Button size="sm" variant="ghost">
                             View valuation
                             <ArrowUpRight className="size-4" />
