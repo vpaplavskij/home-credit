@@ -1,5 +1,5 @@
-import { Head, router } from '@inertiajs/react';
-import { useRef, useState } from 'react';
+import { Head, router, usePage } from '@inertiajs/react';
+import { useEffect, useRef, useState } from 'react';
 import {
     ArrowUpRight,
     Building2,
@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import InputError from '@/components/input-error';
 import {
     Card,
     CardContent,
@@ -53,7 +54,17 @@ const checklist = [
 
 export default function MyHome({ property }: { property: Property | null }) {
     const [open, setOpen] = useState(false);
+    const [clientErrors, setClientErrors] = useState<Record<string, string>>({});
     const formRef = useRef<HTMLFormElement>(null);
+    const { errors } = usePage<{ errors?: Record<string, string> }>().props;
+
+    // Merge client-side and server-side validation errors.
+    const fieldErrors: Record<string, string> = { ...clientErrors, ...(errors ?? {}) };
+
+    // Clear any stale client-side errors whenever the dialog is opened.
+    useEffect(() => {
+        if (open) setClientErrors({});
+    }, [open]);
 
     const details = [
         { icon: MapPin, label: 'Address', value: property?.address ?? '—' },
@@ -68,18 +79,66 @@ export default function MyHome({ property }: { property: Property | null }) {
         { icon: Users, label: 'Owners', value: property?.owners ?? '—' },
     ];
 
+    const toInt = (value: string): number | null => {
+        if (value === '') return null;
+        const n = Number(value);
+        return Number.isInteger(n) ? n : NaN;
+    };
+
     const handleSave = () => {
         if (!formRef.current) return;
-        const data = Object.fromEntries(new FormData(formRef.current).entries());
-        router.put('/my-home', {
-            name: data.name,
-            address: data.address,
-            size_sqm: data.size_sqm ? Number(data.size_sqm) : null,
-            beds: data.beds ? Number(data.beds) : null,
-            baths: data.baths ? Number(data.baths) : null,
-            purchased_at: data.purchased_at || null,
-            owners: data.owners || null,
+        const raw = new FormData(formRef.current);
+        const data: Record<string, string> = {};
+        raw.forEach((value, key) => {
+            data[key] = String(value);
         });
+
+        // Client-side validation mirroring the server rules, so bad input is
+        // caught before a round-trip. Server remains the source of truth.
+        const nextErrors: Record<string, string> = {};
+        if (!data.name?.trim()) nextErrors.name = 'Please give your property a name.';
+        if (!data.address?.trim()) nextErrors.address = 'The property address is required.';
+
+        const size = toInt(data.size_sqm ?? '');
+        if (size !== null && Number.isNaN(size)) {
+            nextErrors.size_sqm = 'Size must be a whole number.';
+        } else if (size !== null && (size < 10 || size > 100000)) {
+            nextErrors.size_sqm = 'Size must be between 10 and 100,000 m².';
+        }
+
+        const beds = toInt(data.beds ?? '');
+        if (beds !== null && (Number.isNaN(beds) || beds < 0 || beds > 32)) {
+            nextErrors.beds = 'Beds must be between 0 and 32.';
+        }
+
+        const baths = toInt(data.baths ?? '');
+        if (baths !== null && (Number.isNaN(baths) || baths < 0 || baths > 32)) {
+            nextErrors.baths = 'Baths must be between 0 and 32.';
+        }
+
+        if (data.purchased_at) {
+            const today = new Date().toISOString().slice(0, 10);
+            if (data.purchased_at > today) {
+                nextErrors.purchased_at = 'Purchase date can’t be in the future.';
+            }
+        }
+
+        setClientErrors(nextErrors);
+        if (Object.keys(nextErrors).length > 0) return;
+
+        router.put(
+            '/my-home',
+            {
+                name: data.name,
+                address: data.address,
+                size_sqm: size === null || Number.isNaN(size) ? null : size,
+                beds: beds === null || Number.isNaN(beds) ? null : beds,
+                baths: baths === null || Number.isNaN(baths) ? null : baths,
+                purchased_at: data.purchased_at || null,
+                owners: data.owners || null,
+            },
+            { preserveScroll: true },
+        );
     };
 
     return (
@@ -128,7 +187,11 @@ export default function MyHome({ property }: { property: Property | null }) {
                                         Update the details of your home.
                                     </DialogDescription>
                                 </DialogHeader>
-                                <form ref={formRef} className="grid gap-4">
+                                <form
+                                    ref={formRef}
+                                    className="grid gap-4"
+                                    noValidate
+                                >
                                     <div className="grid gap-2">
                                         <Label htmlFor="name">Property name</Label>
                                         <Input
@@ -136,7 +199,9 @@ export default function MyHome({ property }: { property: Property | null }) {
                                             name="name"
                                             defaultValue={property?.name ?? ''}
                                             required
+                                            aria-invalid={!!fieldErrors.name}
                                         />
+                                        <InputError message={fieldErrors.name} />
                                     </div>
                                     <div className="grid gap-2">
                                         <Label htmlFor="address">Address</Label>
@@ -145,7 +210,9 @@ export default function MyHome({ property }: { property: Property | null }) {
                                             name="address"
                                             defaultValue={property?.address ?? ''}
                                             required
+                                            aria-invalid={!!fieldErrors.address}
                                         />
+                                        <InputError message={fieldErrors.address} />
                                     </div>
                                     <div className="grid grid-cols-3 gap-4">
                                         <div className="grid gap-2">
@@ -154,9 +221,12 @@ export default function MyHome({ property }: { property: Property | null }) {
                                                 id="size_sqm"
                                                 name="size_sqm"
                                                 type="number"
-                                                min={1}
+                                                min={10}
+                                                max={100000}
                                                 defaultValue={property?.size_sqm ?? ''}
+                                                aria-invalid={!!fieldErrors.size_sqm}
                                             />
+                                            <InputError message={fieldErrors.size_sqm} />
                                         </div>
                                         <div className="grid gap-2">
                                             <Label htmlFor="beds">Beds</Label>
@@ -165,8 +235,11 @@ export default function MyHome({ property }: { property: Property | null }) {
                                                 name="beds"
                                                 type="number"
                                                 min={0}
+                                                max={32}
                                                 defaultValue={property?.beds ?? ''}
+                                                aria-invalid={!!fieldErrors.beds}
                                             />
+                                            <InputError message={fieldErrors.beds} />
                                         </div>
                                         <div className="grid gap-2">
                                             <Label htmlFor="baths">Baths</Label>
@@ -175,8 +248,11 @@ export default function MyHome({ property }: { property: Property | null }) {
                                                 name="baths"
                                                 type="number"
                                                 min={0}
+                                                max={32}
                                                 defaultValue={property?.baths ?? ''}
+                                                aria-invalid={!!fieldErrors.baths}
                                             />
+                                            <InputError message={fieldErrors.baths} />
                                         </div>
                                     </div>
                                     <div className="grid gap-2">
@@ -185,6 +261,7 @@ export default function MyHome({ property }: { property: Property | null }) {
                                             id="purchased_at"
                                             name="purchased_at"
                                             type="date"
+                                            max={new Date().toISOString().slice(0, 10)}
                                             defaultValue={
                                                 property?.purchased_at
                                                     ? new Date(
@@ -192,7 +269,9 @@ export default function MyHome({ property }: { property: Property | null }) {
                                                     ).toISOString().slice(0, 10)
                                                     : ''
                                             }
+                                            aria-invalid={!!fieldErrors.purchased_at}
                                         />
+                                        <InputError message={fieldErrors.purchased_at} />
                                     </div>
                                     <div className="grid gap-2">
                                         <Label htmlFor="owners">Owners</Label>
@@ -200,7 +279,9 @@ export default function MyHome({ property }: { property: Property | null }) {
                                             id="owners"
                                             name="owners"
                                             defaultValue={property?.owners ?? ''}
+                                            aria-invalid={!!fieldErrors.owners}
                                         />
+                                        <InputError message={fieldErrors.owners} />
                                     </div>
                                     <DialogFooter className="mt-2">
                                         <Button type="button" onClick={handleSave}>

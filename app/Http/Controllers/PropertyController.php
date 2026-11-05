@@ -36,15 +36,26 @@ class PropertyController extends Controller
      */
     public function update(Request $request): RedirectResponse
     {
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'address' => ['required', 'string', 'max:255'],
-            'size_sqm' => ['nullable', 'integer', 'min:1', 'max:100000'],
-            'beds' => ['nullable', 'integer', 'min:0', 'max:32'],
-            'baths' => ['nullable', 'integer', 'min:0', 'max:32'],
-            'purchased_at' => ['nullable', 'date'],
-            'owners' => ['nullable', 'string', 'max:255'],
-        ]);
+        $validated = $request->validate(
+            [
+                'name' => ['required', 'string', 'max:255'],
+                'address' => ['required', 'string', 'max:255'],
+                'size_sqm' => ['nullable', 'integer', 'min:10', 'max:100000'],
+                'beds' => ['nullable', 'integer', 'min:0', 'max:32'],
+                'baths' => ['nullable', 'integer', 'min:0', 'max:32'],
+                'purchased_at' => ['nullable', 'date', 'before_or_equal:today'],
+                'owners' => ['nullable', 'string', 'max:255'],
+            ],
+            [
+                'name.required' => 'Please give your property a name.',
+                'address.required' => 'The property address is required.',
+                'size_sqm.min' => 'Size must be at least 10 m².',
+                'size_sqm.max' => 'Size can’t exceed 100,000 m².',
+                'beds.max' => 'Beds can’t exceed 32.',
+                'baths.max' => 'Baths can’t exceed 32.',
+                'purchased_at.before_or_equal' => 'Purchase date can’t be in the future.',
+            ],
+        );
 
         $property = $request->user()->property()->updateOrCreate([], $validated);
 

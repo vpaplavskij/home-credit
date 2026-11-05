@@ -83,6 +83,82 @@ class PropertyUpdateTest extends TestCase
         ])->assertSessionHasErrors(['name', 'address']);
     }
 
+    public function test_size_sqm_must_be_within_bounds(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->put('/my-home', [
+            'name' => 'Tiny Shack',
+            'address' => '1 Small St',
+            'size_sqm' => 5, // below min of 10
+        ])->assertSessionHasErrors('size_sqm');
+
+        $this->actingAs($user)->put('/my-home', [
+            'name' => 'Mega Estate',
+            'address' => '1 Big Ave',
+            'size_sqm' => 200000, // above max of 100000
+        ])->assertSessionHasErrors('size_sqm');
+
+        // A valid size still saves fine.
+        $this->actingAs($user)->put('/my-home', [
+            'name' => 'Normal House',
+            'address' => '1 Ok Rd',
+            'size_sqm' => 120,
+        ])->assertRedirect(route('my-home'));
+    }
+
+    public function test_purchased_at_cannot_be_in_the_future(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->put('/my-home', [
+            'name' => 'Future Home',
+            'address' => '1 Tomorrow Way',
+            'purchased_at' => now()->addYear()->format('Y-m-d'),
+        ])->assertSessionHasErrors('purchased_at');
+
+        // A past date is accepted.
+        $this->actingAs($user)->put('/my-home', [
+            'name' => 'Past Home',
+            'address' => '1 Yesterday Yrd',
+            'purchased_at' => now()->subYear()->format('Y-m-d'),
+        ])->assertRedirect(route('my-home'));
+    }
+
+    public function test_beds_and_baths_must_be_within_bounds(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->put('/my-home', [
+            'name' => 'Many Rooms',
+            'address' => '1 Big House',
+            'beds' => 40, // above max of 32
+        ])->assertSessionHasErrors('beds');
+
+        $this->actingAs($user)->put('/my-home', [
+            'name' => 'Many Baths',
+            'address' => '1 Spa House',
+            'baths' => 40, // above max of 32
+        ])->assertSessionHasErrors('baths');
+    }
+
+    public function test_validation_errors_use_friendly_messages(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->put('/my-home', [
+            'name' => '',
+            'address' => '',
+        ])->assertSessionHasErrors(['name', 'address']);
+
+        // The custom message registered for name.required is what surfaces.
+        $errors = session('errors');
+        $this->assertSame(
+            'Please give your property a name.',
+            $errors->first('name'),
+        );
+    }
+
     public function test_index_and_update_with_empty_optional_fields(): void
     {
         // Mirrors the browser dialog submit: form-encoded PUT where empty
