@@ -1,5 +1,5 @@
-import { Form, Head, router } from '@inertiajs/react';
-import { useState } from 'react';
+import { Head, router } from '@inertiajs/react';
+import { useRef, useState } from 'react';
 import {
     ArrowUpRight,
     Building2,
@@ -53,6 +53,7 @@ const checklist = [
 
 export default function MyHome({ property }: { property: Property | null }) {
     const [open, setOpen] = useState(false);
+    const formRef = useRef<HTMLFormElement>(null);
 
     const details = [
         { icon: MapPin, label: 'Address', value: property?.address ?? '—' },
@@ -67,12 +68,17 @@ export default function MyHome({ property }: { property: Property | null }) {
         { icon: Users, label: 'Owners', value: property?.owners ?? '—' },
     ];
 
-    const submit = (data: Record<string, string>) => {
+    const handleSave = () => {
+        if (!formRef.current) return;
+        const data = Object.fromEntries(new FormData(formRef.current).entries());
         router.put('/my-home', {
-            ...data,
+            name: data.name,
+            address: data.address,
             size_sqm: data.size_sqm ? Number(data.size_sqm) : null,
             beds: data.beds ? Number(data.beds) : null,
             baths: data.baths ? Number(data.baths) : null,
+            purchased_at: data.purchased_at || null,
+            owners: data.owners || null,
         });
     };
 
@@ -122,16 +128,7 @@ export default function MyHome({ property }: { property: Property | null }) {
                                         Update the details of your home.
                                     </DialogDescription>
                                 </DialogHeader>
-                                <Form
-                                    method="post"
-                                    action="#"
-                                    onSubmit={(e) => {
-                                        e.preventDefault();
-                                        const form = new FormData(e.currentTarget);
-                                        submit(Object.fromEntries(form.entries()));
-                                    }}
-                                    className="grid gap-4"
-                                >
+                                <form ref={formRef} className="grid gap-4">
                                     <div className="grid gap-2">
                                         <Label htmlFor="name">Property name</Label>
                                         <Input
@@ -206,9 +203,11 @@ export default function MyHome({ property }: { property: Property | null }) {
                                         />
                                     </div>
                                     <DialogFooter className="mt-2">
-                                        <Button type="submit">Save changes</Button>
+                                        <Button type="button" onClick={handleSave}>
+                                            Save changes
+                                        </Button>
                                     </DialogFooter>
-                                </Form>
+                                </form>
                             </DialogContent>
                         </Dialog>
                         <Button size="sm" variant="ghost">
