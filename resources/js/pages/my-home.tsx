@@ -33,6 +33,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { toast } from 'sonner';
 
 type Property = {
     id: number;
@@ -75,7 +76,17 @@ export default function MyHome({ property }: { property: Property | null }) {
                 ? `${property.size_sqm ?? '—'} m² · ${property.beds ?? '—'} beds · ${property.baths ?? '—'} baths`
                 : '—',
         },
-        { icon: CalendarDays, label: 'Purchased', value: property?.purchased_at ?? '—' },
+        {
+            icon: CalendarDays,
+            label: 'Purchased',
+            value: property?.purchased_at
+                ? new Date(property.purchased_at).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                  })
+                : '—',
+        },
         { icon: Users, label: 'Owners', value: property?.owners ?? '—' },
     ];
 
@@ -137,7 +148,13 @@ export default function MyHome({ property }: { property: Property | null }) {
                 purchased_at: data.purchased_at || null,
                 owners: data.owners || null,
             },
-            { preserveScroll: true },
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    setOpen(false);
+                    toast.success('Property updated.');
+                },
+            },
         );
     };
 
@@ -187,11 +204,7 @@ export default function MyHome({ property }: { property: Property | null }) {
                                         Update the details of your home.
                                     </DialogDescription>
                                 </DialogHeader>
-                                <form
-                                    ref={formRef}
-                                    className="grid gap-4"
-                                    noValidate
-                                >
+                                <form ref={formRef} className="grid gap-4">
                                     <div className="grid gap-2">
                                         <Label htmlFor="name">Property name</Label>
                                         <Input
@@ -261,14 +274,9 @@ export default function MyHome({ property }: { property: Property | null }) {
                                             id="purchased_at"
                                             name="purchased_at"
                                             type="date"
+                                            min={`${new Date().getFullYear() - 50}-01-01`}
                                             max={new Date().toISOString().slice(0, 10)}
-                                            defaultValue={
-                                                property?.purchased_at
-                                                    ? new Date(
-                                                        property.purchased_at,
-                                                    ).toISOString().slice(0, 10)
-                                                    : ''
-                                            }
+                                            defaultValue={property?.purchased_at ?? ''}
                                             aria-invalid={!!fieldErrors.purchased_at}
                                         />
                                         <InputError message={fieldErrors.purchased_at} />
@@ -291,7 +299,15 @@ export default function MyHome({ property }: { property: Property | null }) {
                                 </form>
                             </DialogContent>
                         </Dialog>
-                        <Button size="sm" variant="ghost">
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() =>
+                                document
+                                    .getElementById('valuation')
+                                    ?.scrollIntoView({ behavior: 'smooth' })
+                            }
+                        >
                             View valuation
                             <ArrowUpRight className="size-4" />
                         </Button>

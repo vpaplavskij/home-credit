@@ -25,7 +25,7 @@ class PropertyController extends Controller
                 'size_sqm' => $property->size_sqm,
                 'beds' => $property->beds,
                 'baths' => $property->baths,
-                'purchased_at' => $property->purchased_at?->format('F Y'),
+                'purchased_at' => $property->purchased_at?->format('Y-m-d'),
                 'owners' => $property->owners,
             ] : null,
         ]);

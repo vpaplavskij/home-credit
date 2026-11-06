@@ -1,8 +1,7 @@
-import { Form, Head, router, usePage } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import { useRef } from 'react';
 import { UploadCloud } from 'lucide-react';
-import DocumentController from '@/actions/App/Http/Controllers/DocumentController';
-import InputError from '@/components/input-error';
+import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -34,7 +33,6 @@ function formatDate(date: string | null): string {
 
 export default function Documents({ documents }: { documents: Document[] }) {
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const { props } = usePage();
     const verified = 0; // TODO: wire up verification status once review flow is built
 
     return (
@@ -83,8 +81,14 @@ export default function Documents({ documents }: { documents: Document[] }) {
                                     formData.append('file', e.target.files[0]);
                                     router.post('/documents', formData, {
                                         preserveScroll: true,
-                                        onSuccess: () => router.visit('/documents'),
-                                        onError: (errors) => console.error('Upload errors:', errors),
+                                        onSuccess: () => {
+                                            toast.success('Document uploaded.');
+                                            router.visit('/documents');
+                                        },
+                                        onError: (errors) =>
+                                            toast.error(
+                                                errors.file?.[0] ?? 'Upload failed. Please try again.',
+                                            ),
                                     });
                                     e.target.value = '';
                                 }
@@ -134,14 +138,12 @@ export default function Documents({ documents }: { documents: Document[] }) {
                                     variant="ghost"
                                     type="button"
                                     onClick={() => {
-                                        if (!props.auth?.user) {
-                                            console.error('User not authenticated');
-                                            return;
-                                        }
                                         router.delete(`/documents/${doc.id}`, {
                                             preserveScroll: true,
-                                            onSuccess: () => router.visit('/documents'),
-                                            onError: (errors) => console.error('Delete errors:', errors),
+                                            onSuccess: () => {
+                                                toast.success('Document deleted.');
+                                                router.visit('/documents');
+                                            },
                                         });
                                     }}
                                     className="text-destructive hover:text-destructive hover:bg-destructive/10"

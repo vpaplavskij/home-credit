@@ -159,6 +159,37 @@ class PropertyUpdateTest extends TestCase
         );
     }
 
+    public function test_index_returns_purchase_date_in_iso_format(): void
+    {
+        $user = User::factory()->create();
+        $user->property()->create([
+            'name' => 'Rosewood Residence',
+            'address' => '12 Rosewood Lane, Springfield',
+            'purchased_at' => '2023-03-15',
+        ]);
+
+        $this->actingAs($user)
+            ->get('/my-home')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('my-home')
+                ->where('property.purchased_at', '2023-03-15'));
+    }
+
+    public function test_numeric_fields_reject_non_numeric_input(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->put('/my-home', [
+            'name' => 'Odd House',
+            'address' => '1 Odd St',
+            'size_sqm' => 'abc',
+            'beds' => 'two',
+        ])->assertSessionHasErrors(['size_sqm', 'beds']);
+
+        $this->assertSame(0, $user->property()->count());
+    }
+
     public function test_index_and_update_with_empty_optional_fields(): void
     {
         // Mirrors the browser dialog submit: form-encoded PUT where empty

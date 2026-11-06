@@ -17,6 +17,12 @@ class HandleAppearance
     public function handle(Request $request, Closure $next): Response
     {
         View::share('appearance', $request->cookie('appearance') ?? 'system');
+        View::share(
+            'palette',
+            in_array($request->cookie('palette'), ['steel', 'terracotta', 'forest'], true)
+                ? $request->cookie('palette')
+                : 'steel',
+        );
 
         return $next($request);
     }
