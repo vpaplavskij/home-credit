@@ -55,12 +55,17 @@ const checklist = [
 
 export default function MyHome({ property }: { property: Property | null }) {
     const [open, setOpen] = useState(false);
-    const [clientErrors, setClientErrors] = useState<Record<string, string>>({});
+    const [clientErrors, setClientErrors] = useState<Record<string, string>>(
+        {},
+    );
     const formRef = useRef<HTMLFormElement>(null);
     const { errors } = usePage<{ errors?: Record<string, string> }>().props;
 
     // Merge client-side and server-side validation errors.
-    const fieldErrors: Record<string, string> = { ...clientErrors, ...(errors ?? {}) };
+    const fieldErrors: Record<string, string> = {
+        ...clientErrors,
+        ...errors,
+    };
 
     // Clear any stale client-side errors whenever the dialog is opened.
     useEffect(() => {
@@ -101,14 +106,17 @@ export default function MyHome({ property }: { property: Property | null }) {
         const raw = new FormData(formRef.current);
         const data: Record<string, string> = {};
         raw.forEach((value, key) => {
-            data[key] = String(value);
+            // All fields on this form are text inputs; skip File/Blob entries defensively.
+            if (typeof value === 'string') data[key] = value;
         });
 
         // Client-side validation mirroring the server rules, so bad input is
         // caught before a round-trip. Server remains the source of truth.
         const nextErrors: Record<string, string> = {};
-        if (!data.name?.trim()) nextErrors.name = 'Please give your property a name.';
-        if (!data.address?.trim()) nextErrors.address = 'The property address is required.';
+        if (!data.name?.trim())
+            nextErrors.name = 'Please give your property a name.';
+        if (!data.address?.trim())
+            nextErrors.address = 'The property address is required.';
 
         const size = toInt(data.size_sqm ?? '');
         if (size !== null && Number.isNaN(size)) {
@@ -123,14 +131,18 @@ export default function MyHome({ property }: { property: Property | null }) {
         }
 
         const baths = toInt(data.baths ?? '');
-        if (baths !== null && (Number.isNaN(baths) || baths < 0 || baths > 32)) {
+        if (
+            baths !== null &&
+            (Number.isNaN(baths) || baths < 0 || baths > 32)
+        ) {
             nextErrors.baths = 'Baths must be between 0 and 32.';
         }
 
         if (data.purchased_at) {
             const today = new Date().toISOString().slice(0, 10);
             if (data.purchased_at > today) {
-                nextErrors.purchased_at = 'Purchase date can’t be in the future.';
+                nextErrors.purchased_at =
+                    'Purchase date can’t be in the future.';
             }
         }
 
@@ -174,10 +186,13 @@ export default function MyHome({ property }: { property: Property | null }) {
                                     />
                                 </div>
                                 <div>
-                                    <CardTitle>{property?.name ?? 'No property yet'}</CardTitle>
+                                    <CardTitle>
+                                        {property?.name ?? 'No property yet'}
+                                    </CardTitle>
                                     <CardDescription className="mt-0.5 flex items-center gap-1">
                                         <MapPin className="size-3.5" />
-                                        {property?.address ?? 'Add your property details'}
+                                        {property?.address ??
+                                            'Add your property details'}
                                     </CardDescription>
                                 </div>
                             </div>
@@ -206,7 +221,9 @@ export default function MyHome({ property }: { property: Property | null }) {
                                 </DialogHeader>
                                 <form ref={formRef} className="grid gap-4">
                                     <div className="grid gap-2">
-                                        <Label htmlFor="name">Property name</Label>
+                                        <Label htmlFor="name">
+                                            Property name
+                                        </Label>
                                         <Input
                                             id="name"
                                             name="name"
@@ -214,32 +231,46 @@ export default function MyHome({ property }: { property: Property | null }) {
                                             required
                                             aria-invalid={!!fieldErrors.name}
                                         />
-                                        <InputError message={fieldErrors.name} />
+                                        <InputError
+                                            message={fieldErrors.name}
+                                        />
                                     </div>
                                     <div className="grid gap-2">
                                         <Label htmlFor="address">Address</Label>
                                         <Input
                                             id="address"
                                             name="address"
-                                            defaultValue={property?.address ?? ''}
+                                            defaultValue={
+                                                property?.address ?? ''
+                                            }
                                             required
                                             aria-invalid={!!fieldErrors.address}
                                         />
-                                        <InputError message={fieldErrors.address} />
+                                        <InputError
+                                            message={fieldErrors.address}
+                                        />
                                     </div>
                                     <div className="grid grid-cols-3 gap-4">
                                         <div className="grid gap-2">
-                                            <Label htmlFor="size_sqm">Size (m²)</Label>
+                                            <Label htmlFor="size_sqm">
+                                                Size (m²)
+                                            </Label>
                                             <Input
                                                 id="size_sqm"
                                                 name="size_sqm"
                                                 type="number"
                                                 min={10}
                                                 max={100000}
-                                                defaultValue={property?.size_sqm ?? ''}
-                                                aria-invalid={!!fieldErrors.size_sqm}
+                                                defaultValue={
+                                                    property?.size_sqm ?? ''
+                                                }
+                                                aria-invalid={
+                                                    !!fieldErrors.size_sqm
+                                                }
                                             />
-                                            <InputError message={fieldErrors.size_sqm} />
+                                            <InputError
+                                                message={fieldErrors.size_sqm}
+                                            />
                                         </div>
                                         <div className="grid gap-2">
                                             <Label htmlFor="beds">Beds</Label>
@@ -249,10 +280,16 @@ export default function MyHome({ property }: { property: Property | null }) {
                                                 type="number"
                                                 min={0}
                                                 max={32}
-                                                defaultValue={property?.beds ?? ''}
-                                                aria-invalid={!!fieldErrors.beds}
+                                                defaultValue={
+                                                    property?.beds ?? ''
+                                                }
+                                                aria-invalid={
+                                                    !!fieldErrors.beds
+                                                }
                                             />
-                                            <InputError message={fieldErrors.beds} />
+                                            <InputError
+                                                message={fieldErrors.beds}
+                                            />
                                         </div>
                                         <div className="grid gap-2">
                                             <Label htmlFor="baths">Baths</Label>
@@ -262,37 +299,60 @@ export default function MyHome({ property }: { property: Property | null }) {
                                                 type="number"
                                                 min={0}
                                                 max={32}
-                                                defaultValue={property?.baths ?? ''}
-                                                aria-invalid={!!fieldErrors.baths}
+                                                defaultValue={
+                                                    property?.baths ?? ''
+                                                }
+                                                aria-invalid={
+                                                    !!fieldErrors.baths
+                                                }
                                             />
-                                            <InputError message={fieldErrors.baths} />
+                                            <InputError
+                                                message={fieldErrors.baths}
+                                            />
                                         </div>
                                     </div>
                                     <div className="grid gap-2">
-                                        <Label htmlFor="purchased_at">Purchased</Label>
+                                        <Label htmlFor="purchased_at">
+                                            Purchased
+                                        </Label>
                                         <Input
                                             id="purchased_at"
                                             name="purchased_at"
                                             type="date"
                                             min={`${new Date().getFullYear() - 50}-01-01`}
-                                            max={new Date().toISOString().slice(0, 10)}
-                                            defaultValue={property?.purchased_at ?? ''}
-                                            aria-invalid={!!fieldErrors.purchased_at}
+                                            max={new Date()
+                                                .toISOString()
+                                                .slice(0, 10)}
+                                            defaultValue={
+                                                property?.purchased_at ?? ''
+                                            }
+                                            aria-invalid={
+                                                !!fieldErrors.purchased_at
+                                            }
                                         />
-                                        <InputError message={fieldErrors.purchased_at} />
+                                        <InputError
+                                            message={fieldErrors.purchased_at}
+                                        />
                                     </div>
                                     <div className="grid gap-2">
                                         <Label htmlFor="owners">Owners</Label>
                                         <Input
                                             id="owners"
                                             name="owners"
-                                            defaultValue={property?.owners ?? ''}
+                                            defaultValue={
+                                                property?.owners ?? ''
+                                            }
                                             aria-invalid={!!fieldErrors.owners}
                                         />
-                                        <InputError message={fieldErrors.owners} />
+                                        <InputError
+                                            message={fieldErrors.owners}
+                                        />
                                     </div>
                                     <DialogFooter className="mt-2">
-                                        <Button type="button" onClick={handleSave}>
+                                        <Button
+                                            type="button"
+                                            onClick={handleSave}
+                                        >
                                             Save changes
                                         </Button>
                                     </DialogFooter>

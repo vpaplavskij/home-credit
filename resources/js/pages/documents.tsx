@@ -87,7 +87,8 @@ export default function Documents({ documents }: { documents: Document[] }) {
                                         },
                                         onError: (errors) =>
                                             toast.error(
-                                                errors.file?.[0] ?? 'Upload failed. Please try again.',
+                                                errors.file?.[0] ??
+                                                    'Upload failed. Please try again.',
                                             ),
                                     });
                                     e.target.value = '';
@@ -141,12 +142,14 @@ export default function Documents({ documents }: { documents: Document[] }) {
                                         router.delete(`/documents/${doc.id}`, {
                                             preserveScroll: true,
                                             onSuccess: () => {
-                                                toast.success('Document deleted.');
+                                                toast.success(
+                                                    'Document deleted.',
+                                                );
                                                 router.visit('/documents');
                                             },
                                         });
                                     }}
-                                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                    className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                                 >
                                     Delete
                                 </Button>

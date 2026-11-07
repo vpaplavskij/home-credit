@@ -3,10 +3,7 @@ import type { HTMLAttributes } from 'react';
 import { usePalette, type Palette } from '@/hooks/use-palette';
 import { cn } from '@/lib/utils';
 
-const palettes: Record<
-    Palette,
-    { icon: typeof PaletteIcon; label: string }
-> = {
+const palettes: Record<Palette, { icon: typeof PaletteIcon; label: string }> = {
     steel: { icon: SwatchBook, label: 'Steel palette' },
     terracotta: { icon: PaletteIcon, label: 'Terracotta palette' },
     forest: { icon: Leaf, label: 'Forest palette' },
