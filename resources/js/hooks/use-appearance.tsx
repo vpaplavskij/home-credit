@@ -12,6 +12,16 @@ export type UseAppearanceReturn = {
 const listeners = new Set<() => void>();
 let currentAppearance: Appearance = 'system';
 
+const getCookieValue = (name: string): string | null => {
+    if (typeof document === 'undefined') {
+        return null;
+    }
+    const match = document.cookie.match(
+        new RegExp('(^| )' + name + '=([^;]+)'),
+    );
+    return match ? match[2] : null;
+};
+
 const prefersDark = (): boolean => {
     if (typeof window === 'undefined') {
         return false;
@@ -38,6 +48,12 @@ const getStoredAppearance = (): Appearance => {
 };
 
 const isDarkMode = (appearance: Appearance): boolean => {
+    // During SSR, use the saved cookie preference so server and client resolve consistently.
+    if (typeof window === 'undefined') {
+        const saved = getCookieValue('appearance');
+        return saved === 'dark';
+    }
+
     return appearance === 'dark' || (appearance === 'system' && prefersDark());
 };
 
@@ -94,6 +110,7 @@ export function useAppearance(): UseAppearanceReturn {
         () => 'system',
     );
 
+    // Use the server-passed preference during SSR to avoid hydration mismatch.
     const resolvedAppearance: ResolvedAppearance = isDarkMode(appearance)
         ? 'dark'
         : 'light';

@@ -1,4 +1,5 @@
 import { Link, router } from '@inertiajs/react';
+import { useEffect, useState } from 'react';
 import { LogOut, Moon, Sun } from 'lucide-react';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import PaletteToggle from '@/components/palette-toggle';
@@ -20,9 +21,14 @@ export function AppSidebarHeader({
 }) {
     const { resolvedAppearance, updateAppearance } = useAppearance();
     const cleanup = useMobileNavigation();
+    const [mounted, setMounted] = useState(false);
 
-    const nextMode = resolvedAppearance === 'dark' ? 'light' : 'dark';
-    const ThemeIcon = resolvedAppearance === 'dark' ? Moon : Sun;
+    // Defer theme-dependent rendering until after hydration to avoid mismatch.
+    useEffect(() => setMounted(true), []);
+
+    const nextMode =
+        mounted && resolvedAppearance === 'dark' ? 'light' : 'dark';
+    const ThemeIcon = mounted && resolvedAppearance === 'dark' ? Moon : Sun;
     const nextLabel =
         nextMode === 'light' ? 'Switch to light mode' : 'Switch to dark mode';
 
