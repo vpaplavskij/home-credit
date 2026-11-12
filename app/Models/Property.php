@@ -30,6 +30,8 @@ class Property extends Model
 
     /**
      * Get the user that owns the property.
+     *
+     * @return BelongsTo<User, $this>
      */
     public function user(): BelongsTo
     {

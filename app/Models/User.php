@@ -38,6 +38,8 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
 
     /**
      * Get the documents uploaded by the user.
+     *
+     * @return HasMany<Document, $this>
      */
     public function documents(): HasMany
     {
@@ -46,6 +48,8 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
 
     /**
      * Get the user's property.
+     *
+     * @return HasOne<Property, $this>
      */
     public function property(): HasOne
     {

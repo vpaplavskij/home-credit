@@ -27,6 +27,8 @@ class Document extends Model
 
     /**
      * Get the user that owns the document.
+     *
+     * @return BelongsTo<User, $this>
      */
     public function user(): BelongsTo
     {
