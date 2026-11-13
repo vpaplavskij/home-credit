@@ -152,7 +152,7 @@ export default function Dashboard({
                             variant={hasProperty ? 'default' : 'outline'}
                         >
                             <Link href={documents()} prefetch>
-                                Upload documents
+                                Documents
                             </Link>
                         </Button>
                     </CardContent>

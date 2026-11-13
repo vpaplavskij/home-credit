@@ -1,6 +1,5 @@
 import { Head, router } from '@inertiajs/react';
-import { useRef } from 'react';
-import { UploadCloud } from 'lucide-react';
+import { Pencil, UploadCloud } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,6 +10,7 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
+import { destroy, edit, example, index } from '@/routes/documents';
 
 type Document = {
     id: number;
@@ -32,14 +32,13 @@ function formatDate(date: string | null): string {
 }
 
 export default function Documents({ documents }: { documents: Document[] }) {
-    const fileInputRef = useRef<HTMLInputElement>(null);
     const verified = 0; // TODO: wire up verification status once review flow is built
 
     return (
         <>
             <Head title="Documents" />
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
-                {/* Upload hero */}
+                {/* Bank cost-estimate hero */}
                 <Card>
                     <CardHeader>
                         <div className="flex items-center justify-between gap-4">
@@ -63,38 +62,29 @@ export default function Documents({ documents }: { documents: Document[] }) {
                         <Button
                             size="sm"
                             type="button"
-                            onClick={() => fileInputRef.current?.click()}
+                            onClick={() =>
+                                router.post(
+                                    example.url(),
+                                    {},
+                                    {
+                                        preserveScroll: true,
+                                        onSuccess: () =>
+                                            router.visit(index.url()),
+                                    },
+                                )
+                            }
                         >
                             <UploadCloud />
-                            Upload document
+                            Add Swedbank cost estimate
                         </Button>
-                        <input
-                            type="file"
-                            name="file"
-                            className="hidden"
-                            id="document-file"
-                            ref={fileInputRef}
-                            accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.xls,.xlsx"
-                            onChange={(e) => {
-                                if (e.target.files?.[0]) {
-                                    const formData = new FormData();
-                                    formData.append('file', e.target.files[0]);
-                                    router.post('/documents', formData, {
-                                        preserveScroll: true,
-                                        onSuccess: () => {
-                                            toast.success('Document uploaded.');
-                                            router.visit('/documents');
-                                        },
-                                        onError: (errors) =>
-                                            toast.error(
-                                                errors.file?.[0] ??
-                                                    'Upload failed. Please try again.',
-                                            ),
-                                    });
-                                    e.target.value = '';
-                                }
-                            }}
-                        />
+                        <Button size="sm" type="button" disabled>
+                            <UploadCloud />
+                            Add Seb cost estimate
+                        </Button>
+                        <Button size="sm" type="button" disabled>
+                            <UploadCloud />
+                            Add Luminor cost estimate
+                        </Button>
                     </CardContent>
                 </Card>
 
@@ -138,14 +128,23 @@ export default function Documents({ documents }: { documents: Document[] }) {
                                     size="sm"
                                     variant="ghost"
                                     type="button"
+                                    onClick={() => router.get(edit.url(doc.id))}
+                                >
+                                    <Pencil className="size-3.5" />
+                                    Edit
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    type="button"
                                     onClick={() => {
-                                        router.delete(`/documents/${doc.id}`, {
+                                        router.delete(destroy.url(doc.id), {
                                             preserveScroll: true,
                                             onSuccess: () => {
                                                 toast.success(
                                                     'Document deleted.',
                                                 );
-                                                router.visit('/documents');
+                                                router.visit(index.url());
                                             },
                                         });
                                     }}

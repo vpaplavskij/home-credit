@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Models\Document;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -19,37 +18,42 @@ class DocumentUploadTest extends TestCase
 
         Storage::fake('local');
 
-        $this->actingAs(
-            User::factory()
-                ->withPersonalTeam()
-                ->create()
-        );
+        $this->actingAs(User::factory()->create());
     }
 
-    /** @test */
-    public function user_can_upload_document()
+    public function test_user_can_add_example_swedbank_estimate()
     {
-        $file = UploadedFile::fake()->image('test.jpg')->size(1024);
-
-        $response = $this->post('/documents', [
-            'file' => $file,
-        ]);
+        $response = $this->post('/documents/example');
 
         $response->assertRedirect('/documents');
         $this->assertDatabaseHas('documents', [
-            'name' => 'test.jpg',
+            'name' => 'Swedbank cost estimate',
             'user_id' => auth()->id(),
+            'path' => 'documents/'.auth()->id().'/swedbank-cost-estimate.xlsx',
+            'mime_type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ]);
 
-        Storage::disk('local')->assertExists("documents/{$this->user()->id}/test.jpg");
+        Storage::disk('local')->assertExists('documents/'.auth()->id().'/swedbank-cost-estimate.xlsx');
     }
 
-    /** @test */
-    public function user_can_delete_document()
+    public function test_example_swedbank_estimate_is_not_added_twice()
+    {
+        $this->post('/documents/example');
+        $response = $this->post('/documents/example');
+
+        $response->assertInertiaFlash('toast', [
+            'type' => 'error',
+            'message' => 'Already in your credit file.',
+        ]);
+
+        $this->assertSame(1, Document::where('name', 'Swedbank cost estimate')->count());
+    }
+
+    public function test_user_can_delete_document()
     {
         $document = Document::factory()->create([
             'user_id' => auth()->id(),
-            'path' => "documents/{$this->user()->id}/test.txt",
+            'path' => 'documents/'.auth()->id().'/test.txt',
         ]);
 
         Storage::disk('local')->put($document->path, 'test content');
@@ -61,27 +65,47 @@ class DocumentUploadTest extends TestCase
         Storage::disk('local')->assertMissing($document->path);
     }
 
-    /** @test */
-    public function document_upload_validates_file_type()
+    public function test_user_can_rename_document()
     {
-        $file = UploadedFile::fake()->create('test.txt', 1024, 'text/plain');
-
-        $response = $this->post('/documents', [
-            'file' => $file,
+        $document = Document::factory()->create([
+            'user_id' => auth()->id(),
+            'path' => 'documents/'.auth()->id().'/test.pdf',
         ]);
 
-        $response->assertInvalid(['file']);
+        $response = $this->put("/documents/{$document->id}", [
+            'name' => 'Renamed document',
+        ]);
+
+        $response->assertRedirect('/documents');
+        $this->assertDatabaseHas('documents', [
+            'id' => $document->id,
+            'name' => 'Renamed document',
+        ]);
     }
 
-    /** @test */
-    public function document_upload_validates_file_size()
+    public function test_user_cannot_update_others_document()
     {
-        $file = UploadedFile::fake()->image('large.jpg')->size(10241); // 10MB + 1 byte
+        $other = User::factory()->create();
+        $document = Document::factory()->create(['user_id' => $other->id]);
 
-        $response = $this->post('/documents', [
-            'file' => $file,
+        $response = $this->put("/documents/{$document->id}", [
+            'name' => 'Hacked',
         ]);
 
-        $response->assertInvalid(['file']);
+        $response->assertNotFound();
+    }
+
+    public function test_update_requires_name()
+    {
+        $document = Document::factory()->create([
+            'user_id' => auth()->id(),
+            'path' => 'documents/'.auth()->id().'/test.pdf',
+        ]);
+
+        $response = $this->put("/documents/{$document->id}", [
+            'name' => '',
+        ]);
+
+        $response->assertInvalid(['name']);
     }
 }
